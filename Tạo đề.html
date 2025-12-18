@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luyện Đề</title>
+<style>
+    /* --- CÀI ĐẶT CHUNG --- */
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color: #333; padding-top: 80px; }
+    .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); min-height: 80vh; }
+    
+    /* --- HEADER --- */
+    .sticky-header { 
+        position: fixed; top: 0; left: 0; right: 0; 
+        background: rgba(255, 255, 255, 0.98); 
+        padding: 10px 30px; 
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        display: flex; justify-content: space-between; align-items: center; 
+        z-index: 1000; backdrop-filter: blur(8px); border-bottom: 1px solid #e0e0e0;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; font-weight: 600; color: #555; }
+    .header-center { display: flex; gap: 10px; }
+    .header-right { font-size: 1.2em; font-weight: bold; color: #dc3545; min-width: 100px; text-align: right; }
+    .saved-badge { background: #28a745; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; display: none; }
+
+    /* --- BUTTONS --- */
+    button { padding: 10px 20px; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .btn-create { background: #007bff; color: white; font-size: 16px; padding: 12px 30px; }
+    .btn-submit { background: #28a745; color: white; }
+    .btn-shuffle { background: #6c5ce7; color: white; } 
+    .btn-shuffle.active { background: #4834d4; box-shadow: inset 0 0 5px rgba(0,0,0,0.3); }
+    .btn-reset { background: #fff; color: #dc3545; border: 1px solid #dc3545; }
+    .btn-reset:hover { background: #dc3545; color: white; }
+
+    /* --- EDITOR --- */
+    .input-section { background: #e9ecef; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+    .rich-editor { 
+        width: 100%; height: 300px; margin-bottom: 15px; padding: 15px; 
+        border: 1px solid #ccc; border-radius: 6px; background: white; 
+        text-align: left; overflow-y: auto; 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14px; outline: none;
+    }
+    .rich-editor:focus { border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.1); }
+    .rich-editor:empty:before { content: attr(data-placeholder); color: #888; font-style: italic; }
+
+    /* --- DISPLAY --- */
+    #quiz-section { display: none; margin-top: 20px; }
+    
+    .question-box { background: #fff; border: 1px solid #eee; padding: 20px; margin-bottom: 20px; border-radius: 8px; transition: 0.3s; }
+    .question-box:hover { border-color: #007bff; box-shadow: 0 4px 12px rgba(0,123,255,0.1); }
+    .q-title { font-weight: bold; color: #2c3e50; margin-bottom: 15px; font-size: 1.1em; line-height: 1.5; }
+    
+    .option { display: block; margin: 8px 0; padding: 12px 15px; border: 1px solid #eee; border-radius: 6px; cursor: pointer; transition: 0.2s; position: relative; }
+    .option:hover { background: #f8f9fa; border-color: #bbb; }
+    .option input { margin-right: 12px; transform: scale(1.2); }
+    
+    .correct { background-color: #d4edda !important; border: 1px solid #c3e6cb !important; color: #155724; }
+    .incorrect { background-color: #f8d7da !important; border: 1px solid #f5c6cb !important; color: #721c24; opacity: 0.9; }
+    .explain { margin-top: 10px; padding: 10px; border-radius: 5px; font-size: 0.95em; }
+</style>
+</head>
+<body>
+
+<div class="sticky-header" id="main-header" style="display:none;">
+    <div class="header-left">
+        <span id="quiz-info">Đang tải...</span>
+        <span id="save-status" class="saved-badge">Đã lưu</span>
+    </div>
+    <div class="header-center">
+        <button onclick="toggleShuffle()" id="btnShuffle" class="btn-shuffle">🔀 Đảo câu hỏi</button>
+        <button onclick="submitQuiz()" class="btn-submit">✅ NỘP BÀI</button>
+        <button onclick="resetAll()" class="btn-reset">🗑️ NHẬP MỚI</button>
+    </div>
+    <div class="header-right">
+        <span id="score-display">Điểm: --</span>
+    </div>
+</div>
+
+<div class="container">
+    <div id="input-screen">
+        <h2 style="color:#2c3e50; text-align:center;">📂 NHẬP ĐỀ THI</h2>
+        <p style="color:#666; text-align:center;">
+            Dán nội dung vào ô dưới
+        </p>
+        <div class="input-section">
+            <div id="rich-input" class="rich-editor" contenteditable="true" data-placeholder="Dán nội dung vào đây..."></div>
+            <button onclick="processData()" class="btn-create" id="btn-process">🚀 TẠO ĐỀ NGAY</button>
+            <p id="error-msg" style="color: red; margin-top: 10px; font-weight:bold;"></p>
+        </div>
+    </div>
+
+    <div id="quiz-section">
+        <div id="quiz-container"></div>
+    </div>
+</div>
+
+<script>
+    let quizItems = []; // Bây giờ chỉ chứa Question
+    let questionsOnly = [];
+    let shuffledQuestions = [];
+    let isShuffled = false;
+    const STORAGE_KEY = 'quiz_pro_v14'; 
+
+    window.onload = function() {
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+            try {
+                let parsed = JSON.parse(savedData);
+                // V14 cấu trúc đơn giản hơn, nhưng để tương thích ngược ta vẫn check
+                if (parsed.questions) {
+                    questionsOnly = parsed.questions;
+                    quizItems = parsed.questions; // Gộp chung vì không còn header
+                } else {
+                    questionsOnly = parsed;
+                    quizItems = parsed;
+                }
+                
+                if (questionsOnly.length > 0) renderQuiz();
+            } catch (e) { console.log("Lỗi data cũ"); }
+        }
+    };
+
+    function processData() {
+        try {
+            document.getElementById('btn-process').innerText = "⏳ Đang xử lý...";
+            setTimeout(() => { runProcess(); }, 100);
+        } catch (e) {
+            alert("Lỗi: " + e.message);
+        }
+    }
+
+    function runProcess() {
+        try {
+            const editor = document.getElementById('rich-input');
+            let tempDiv = document.createElement("div");
+            tempDiv.innerHTML = editor.innerHTML; 
+
+            // Loại bỏ ảnh/video
+            let images = tempDiv.querySelectorAll('img, svg, canvas, video, audio');
+            images.forEach(img => img.remove());
+
+            // Đánh dấu in đậm
+            let boldTags = tempDiv.querySelectorAll("b, strong, span[style*='font-weight: bold'], span[style*='font-weight:700'], span[style*='font-weight: 700']");
+            boldTags.forEach(tag => {
+                if(tag.innerText && tag.innerText.trim().length > 0) tag.prepend(" ★★★ ");
+            });
+
+            // Gắn vào body để lấy text chuẩn
+            tempDiv.style.position = 'absolute'; tempDiv.style.left = '-9999px';
+            document.body.appendChild(tempDiv);
+            let text = tempDiv.innerText;
+            document.body.removeChild(tempDiv);
+
+            if (!text || !text.trim()) {
+                throw new Error("Không tìm thấy nội dung!");
+            }
+
+            // --- BỘ LỌC CẮT DÍNH ---
+            text = text.replace(/(\.)\s*(Câu\s+\d+)/gi, "$1\n$2");
+            text = text.replace(/([a-zà-ỹ])\s*(Câu\s+\d+)/gi, "$1\n$2");
+            text = text.replace(/([?.:])\s*([A-E]\.)/gi, "$1\n$2");
+            text = text.replace(/(\d+)(Câu\s+\d+)/gi, "$1\n$2");
+            text = text.replace(/(\.)([IVX]+\.\s)/g, "$1\n$2");
+
+            // --- TÁCH ĐÁP ÁN ---
+            let contentPart = text;
+            let answerPart = "";
+            const answerKeyRegex = /\n\s*(ĐÁP ÁN|BẢNG TRẢ LỜI|DAP AN|BẢNG ĐÁP ÁN)(?:[\s:_-]*)\n/gi;
+            let match;
+            let lastMatchIndex = -1;
+            while ((match = answerKeyRegex.exec(text)) !== null) {
+                lastMatchIndex = match.index;
+            }
+            if (lastMatchIndex !== -1) {
+                contentPart = text.substring(0, lastMatchIndex);
+                answerPart = text.substring(lastMatchIndex);
+            }
+
+            let lines = contentPart.split('\n');
+            questionsOnly = [];
+            let currentItem = null; 
+            let qIndexCounter = 0;
+
+            const regexQuestionStart = /^(Câu\s+\d+[:.]?|\d+\.\s)(.*)/i; 
+            const regexOptionStart = /^[A-E]\./i; 
+            const regexPageNumber = /^[\d\s]+$/; 
+            // Regex Header để BỎ QUA (Skip)
+            const regexHeader = /^(CHƯƠNG|PHẦN|BÀI|MỤC|ĐỀ)\s|^[IVX]+\.\s|^\d+\.\s+[^\d]/i;
+            const regexBigHeader = /^[A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴÝỶỸ\s\W\d]+$/;
+
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (!line) continue; 
+                if (regexPageNumber.test(line)) continue;
+
+                // Nếu là Header -> BỎ QUA LUÔN
+                if (regexHeader.test(line) || (regexBigHeader.test(line) && line.length > 5)) {
+                    // Tuy nhiên, nếu đang ở trong 1 câu hỏi, header có thể là nội dung rác dính vào
+                    // Nhưng theo yêu cầu "bỏ tiêu đề", ta cứ skip cho sạch.
+                    continue;
+                }
+
+                let qMatch = line.match(regexQuestionStart);
+                if (qMatch) {
+                    if (currentItem) questionsOnly.push(currentItem);
+                    let cleanLine = line.replace(/^\d+\s+(?=Câu)/i, ""); 
+                    cleanLine = cleanLine.replace(/★★★/g, "");
+
+                    currentItem = {
+                        id: qIndexCounter++,
+                        title: cleanLine,
+                        options: [],
+                        correctIndex: -1,
+                        userSelect: -1,
+                        state: 'TITLE' 
+                    };
+                    continue;
+                }
+
+                if (regexOptionStart.test(line)) {
+                    if (currentItem) {
+                        let isBold = line.includes("★★★");
+                        let cleanOption = line.replace(/★★★/g, "").trim();
+                        currentItem.options.push(cleanOption);
+                        currentItem.state = 'OPTION';
+                        if (isBold) currentItem.correctIndex = currentItem.options.length - 1;
+                    }
+                    continue;
+                }
+
+                // Dòng trôi nổi
+                if (currentItem) {
+                    let cleanLineAppend = line.replace(/★★★/g, "").trim();
+                    let isBoldLine = line.includes("★★★");
+                    if (currentItem.state === 'OPTION') {
+                        let lastOptIdx = currentItem.options.length - 1;
+                        if (lastOptIdx >= 0) {
+                            currentItem.options[lastOptIdx] += " " + cleanLineAppend;
+                            if (isBoldLine) currentItem.correctIndex = lastOptIdx;
+                        }
+                    } else if (currentItem.state === 'TITLE') {
+                        currentItem.title += " " + cleanLineAppend;
+                    }
+                }
+                // Nếu chưa có currentItem mà gặp dòng trôi nổi -> Bỏ qua (vì đó là text rác đầu trang)
+            }
+            if (currentItem) questionsOnly.push(currentItem);
+
+            // Xử lý đáp án bảng
+            if (answerPart) {
+                let ansRegex = /(\d+)[\s.\-\:]*([A-E])/gi;
+                let ansMatch;
+                while ((ansMatch = ansRegex.exec(answerPart)) !== null) {
+                    let qNum = parseInt(ansMatch[1]);
+                    let ansChar = ansMatch[2].toUpperCase();
+                    let mapChar = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4};
+                    if (qNum <= questionsOnly.length) {
+                        let q = questionsOnly[qNum - 1];
+                        if (q.correctIndex === -1) q.correctIndex = mapChar[ansChar];
+                    }
+                }
+            }
+
+            if (questionsOnly.length === 0) {
+                throw new Error("Không tìm thấy câu hỏi nào!");
+            }
+
+            let dataToSave = { questions: questionsOnly };
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            } catch (e) {
+                alert("⚠️ Dữ liệu lớn, không thể lưu tự động (nhưng vẫn làm bài được).");
+            }
+            renderQuiz();
+
+        } catch (error) {
+            alert("Lỗi: " + error.message);
+            document.getElementById('btn-process').innerText = "🚀 TẠO ĐỀ NGAY";
+        }
+    }
+
+    function shuffleArray(array) {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex != 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    }
+
+    function toggleShuffle() {
+        isShuffled = !isShuffled;
+        const btn = document.getElementById('btnShuffle');
+        if (isShuffled) {
+            btn.classList.add('active');
+            btn.innerText = "↩ Hủy đảo";
+            shuffledQuestions = [...questionsOnly]; 
+            shuffleArray(shuffledQuestions);
+        } else {
+            btn.classList.remove('active');
+            btn.innerText = "🔀 Đảo câu hỏi";
+        }
+        renderQuiz();
+    }
+
+    function renderQuiz() {
+        document.getElementById('input-screen').style.display = 'none';
+        document.getElementById('main-header').style.display = 'flex';
+        document.getElementById('quiz-section').style.display = 'block';
+        document.getElementById('quiz-info').innerText = `Số câu: ${questionsOnly.length}`;
+        document.getElementById('save-status').style.display = 'inline-block';
+
+        const container = document.getElementById('quiz-container');
+        container.innerHTML = "";
+
+        let listToRender = isShuffled ? shuffledQuestions : questionsOnly;
+
+        listToRender.forEach((q) => {
+            let displayTitle = isShuffled ? `(Gốc ${q.id + 1}) ${q.title}` : q.title;
+            let renderOpts = q.options.length > 0 ? q.options : ["(Lỗi hiển thị đáp án)"];
+            
+            let html = `<div class="question-box" id="qbox-${q.id}">
+                <div class="q-title">${displayTitle}</div>
+                <div class="q-options">`;
+            
+            renderOpts.forEach((opt, optIdx) => {
+                let checked = q.userSelect === optIdx ? 'checked' : '';
+                html += `<label class="option" id="opt-${q.id}-${optIdx}">
+                    <input type="radio" name="q-${q.id}" value="${optIdx}" ${checked} onchange="saveSelection(${q.id}, ${optIdx})"> ${opt}
+                </label>`;
+            });
+
+            html += `</div><div class="explain" id="msg-${q.id}"></div></div>`;
+            container.innerHTML += html;
+        });
+    }
+
+    function saveSelection(qId, optIdx) {
+        let q = questionsOnly.find(x => x.id === qId);
+        if (q) q.userSelect = optIdx;
+        try {
+            let dataToSave = { questions: questionsOnly };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        } catch(e) {}
+    }
+
+    function submitQuiz() {
+        let score = 0;
+        let total = questionsOnly.length;
+
+        questionsOnly.forEach((q) => {
+            const msgDiv = document.getElementById(`msg-${q.id}`);
+            const qBox = document.getElementById(`qbox-${q.id}`);
+            
+            if (msgDiv && qBox) {
+                qBox.querySelectorAll('.option').forEach(el => el.classList.remove('correct', 'incorrect'));
+                msgDiv.innerHTML = "";
+
+                if (q.userSelect !== -1) {
+                    if (q.userSelect === q.correctIndex) {
+                        score++;
+                        document.getElementById(`opt-${q.id}-${q.userSelect}`).classList.add('correct');
+                        msgDiv.innerHTML = "<b style='color:green'>✔ Chính xác!</b>";
+                    } else {
+                        document.getElementById(`opt-${q.id}-${q.userSelect}`).classList.add('incorrect');
+                        let correctText = q.correctIndex !== -1 ? String.fromCharCode(65 + q.correctIndex) : "?";
+                        if (q.correctIndex !== -1 && document.getElementById(`opt-${q.id}-${q.correctIndex}`)) {
+                            document.getElementById(`opt-${q.id}-${q.correctIndex}`).classList.add('correct');
+                        }
+                        msgDiv.innerHTML = `<b style='color:red'>✘ Sai rồi!</b> Đáp án đúng là: <b>${correctText}</b>`;
+                    }
+                } else {
+                    msgDiv.innerHTML = "<span style='color:orange'>⚠ Chưa chọn đáp án.</span>";
+                }
+            } else {
+                if (q.userSelect !== -1 && q.userSelect === q.correctIndex) score++;
+            }
+        });
+
+        let percent = Math.round((score/total)*100);
+        document.getElementById('score-display').innerHTML = `${score}/${total} (${percent}%)`;
+        alert(`Bạn làm đúng ${score}/${total} câu.`);
+        window.scrollTo(0, 0);
+    }
+
+    function resetAll() {
+        if(confirm("Bạn có chắc muốn xóa đề hiện tại?")) {
+            localStorage.removeItem(STORAGE_KEY);
+            location.reload();
+        }
+    }
+</script>
+
+</body>
+</html>
